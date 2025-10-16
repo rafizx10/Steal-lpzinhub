@@ -2,338 +2,236 @@
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local character = player.Character
+if not character then
+	player.CharacterAdded:Wait()
+	character = player.Character
+end
+
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
--- Variáveis
-local panelOpen = false
+-- CONFIG
 local autoReturnEnabled = false
 local flySpeed = 100
-local isReturning = false
-local spawnCFrame = humanoidRootPart.CFrame
 local maxFlySpeed = 1156
-local fastFlyActive = false
+local isFlying = false
+local spawnLocation = humanoidRootPart.CFrame
 
--- Criar ScreenGui Principal
+-- GUI Setup
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "DeltaExecutorGUI"
+screenGui.Name = "BrainrotGUI"
 screenGui.ResetOnSpawn = false
-screenGui.ZIndex = 100
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- ============ BOTÃO FLUTUANTE ============
-local floatingButton = Instance.new("TextButton")
-floatingButton.Name = "FloatingButton"
-floatingButton.Size = UDim2.new(0, 80, 0, 80)
-floatingButton.Position = UDim2.new(0, 20, 0, 20)
-floatingButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-floatingButton.BackgroundCornerRadius = UDim.new(0, 40)
-floatingButton.Text = "🔥"
-floatingButton.TextSize = 40
-floatingButton.TextColor3 = Color3.fromRGB(255, 100, 0)
-floatingButton.BorderSizePixel = 2
-floatingButton.BorderColor3 = Color3.fromRGB(255, 100, 0)
-floatingButton.ZIndex = 101
-floatingButton.Parent = screenGui
+-- Main Panel
+local panel = Instance.new("Frame")
+panel.Name = "MainPanel"
+panel.Size = UDim2.new(0, 300, 0, 400)
+panel.Position = UDim2.new(0, 50, 0, 50)
+panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+panel.BorderSizePixel = 2
+panel.BorderColor3 = Color3.fromRGB(255, 100, 0)
+panel.Parent = screenGui
 
--- ============ PAINEL PRINCIPAL ============
-local mainPanel = Instance.new("Frame")
-mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 350, 0, 500)
-mainPanel.Position = UDim2.new(0.5, -175, 0.5, -250)
-mainPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-mainPanel.BorderSizePixel = 3
-mainPanel.BorderColor3 = Color3.fromRGB(255, 100, 0)
-mainPanel.Visible = false
-mainPanel.ZIndex = 100
-mainPanel.Parent = screenGui
+-- Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+titleLabel.Text = "DELTA BRAINROT"
+titleLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.BorderSizePixel = 0
+titleLabel.Parent = panel
 
--- Título
-local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, 0, 0, 50)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-title.Text = "🔥 DELTA EXECUTOR 🔥"
-title.TextColor3 = Color3.fromRGB(0, 0, 0)
-title.TextSize = 16
-title.Font = Enum.Font.GothamBold
-title.BorderSizePixel = 0
-title.ZIndex = 101
-title.Parent = mainPanel
-
--- ============ AUTO RETURN ============
-local autoReturnLabel = Instance.new("TextLabel")
-autoReturnLabel.Name = "AutoReturnLabel"
-autoReturnLabel.Size = UDim2.new(0, 220, 0, 35)
-autoReturnLabel.Position = UDim2.new(0, 15, 0, 70)
-autoReturnLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-autoReturnLabel.Text = "AUTO RETURN ON BRAINROT:"
-autoReturnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoReturnLabel.TextSize = 12
-autoReturnLabel.Font = Enum.Font.GothamBold
-autoReturnLabel.BorderSizePixel = 1
-autoReturnLabel.BorderColor3 = Color3.fromRGB(255, 100, 0)
-autoReturnLabel.ZIndex = 101
-autoReturnLabel.Parent = mainPanel
-
-local autoReturnToggle = Instance.new("TextButton")
-autoReturnToggle.Name = "AutoReturnToggle"
-autoReturnToggle.Size = UDim2.new(0, 80, 0, 35)
-autoReturnToggle.Position = UDim2.new(0, 250, 0, 70)
-autoReturnToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-autoReturnToggle.Text = "OFF"
-autoReturnToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoReturnToggle.TextSize = 14
-autoReturnToggle.Font = Enum.Font.GothamBold
-autoReturnToggle.BorderSizePixel = 2
-autoReturnToggle.BorderColor3 = Color3.fromRGB(255, 100, 0)
-autoReturnToggle.ZIndex = 101
-autoReturnToggle.Parent = mainPanel
-
--- ============ VELOCIDADE ============
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Name = "SpeedLabel"
-speedLabel.Size = UDim2.new(1, -30, 0, 30)
-speedLabel.Position = UDim2.new(0, 15, 0, 125)
-speedLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-speedLabel.Text = "VELOCIDADE: " .. flySpeed .. " / " .. maxFlySpeed
-speedLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-speedLabel.TextSize = 13
-speedLabel.Font = Enum.Font.GothamBold
-speedLabel.BorderSizePixel = 1
-speedLabel.BorderColor3 = Color3.fromRGB(0, 255, 100)
-speedLabel.ZIndex = 101
-speedLabel.Parent = mainPanel
-
--- Slider Background
-local speedSliderBg = Instance.new("Frame")
-speedSliderBg.Name = "SpeedSliderBg"
-speedSliderBg.Size = UDim2.new(0, 320, 0, 25)
-speedSliderBg.Position = UDim2.new(0, 15, 0, 165)
-speedSliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-speedSliderBg.BorderSizePixel = 2
-speedSliderBg.BorderColor3 = Color3.fromRGB(255, 100, 0)
-speedSliderBg.ZIndex = 100
-speedSliderBg.Parent = mainPanel
-
--- Slider Fill
-local sliderFill = Instance.new("Frame")
-sliderFill.Name = "SliderFill"
-sliderFill.Size = UDim2.new(0, 0, 1, 0)
-sliderFill.Position = UDim2.new(0, 0, 0, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-sliderFill.BorderSizePixel = 0
-sliderFill.ZIndex = 99
-sliderFill.Parent = speedSliderBg
-
--- Slider Button
-local sliderButton = Instance.new("TextButton")
-sliderButton.Name = "SliderButton"
-sliderButton.Size = UDim2.new(0, 25, 1, 8)
-sliderButton.Position = UDim2.new(0, -12, 0, -4)
-sliderButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-sliderButton.Text = ""
-sliderButton.BorderSizePixel = 2
-sliderButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-sliderButton.ZIndex = 101
-sliderButton.Parent = speedSliderBg
-
--- ============ STATUS LOG ============
+-- Status Label
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Name = "StatusLabel"
-statusLabel.Size = UDim2.new(1, -30, 0, 120)
-statusLabel.Position = UDim2.new(0, 15, 0, 210)
-statusLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-statusLabel.Text = "✓ Script Carregado!\n✓ Clique em AUTO RETURN\n✓ Roube um brainrot\n✓ Voe rápido (E)\n✓ Auto volta ao spawn!\n\n"
-statusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-statusLabel.TextSize = 11
-statusLabel.Font = Enum.Font.Gotham
+statusLabel.Size = UDim2.new(1, -20, 0, 50)
+statusLabel.Position = UDim2.new(0, 10, 0, 50)
+statusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+statusLabel.Text = "Status: Pronto"
+statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+statusLabel.TextSize = 14
 statusLabel.TextWrapped = true
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.TextYAlignment = Enum.TextYAlignment.Top
-statusLabel.BorderSizePixel = 2
-statusLabel.BorderColor3 = Color3.fromRGB(0, 255, 150)
-statusLabel.ZIndex = 101
-statusLabel.Parent = mainPanel
+statusLabel.BorderSizePixel = 1
+statusLabel.BorderColor3 = Color3.fromRGB(0, 255, 100)
+statusLabel.Parent = panel
 
--- Função para adicionar status
-local function addStatus(msg)
-	statusLabel.Text = msg .. "\n" .. statusLabel.Text
-	if string.len(statusLabel.Text) > 600 then
-		statusLabel.Text = string.sub(statusLabel.Text, 1, 600)
-	end
+-- Auto Return Button
+local autoReturnBtn = Instance.new("TextButton")
+autoReturnBtn.Size = UDim2.new(1, -20, 0, 40)
+autoReturnBtn.Position = UDim2.new(0, 10, 0, 115)
+autoReturnBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+autoReturnBtn.Text = "AUTO RETURN: OFF"
+autoReturnBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoReturnBtn.TextSize = 14
+autoReturnBtn.Font = Enum.Font.GothamBold
+autoReturnBtn.BorderSizePixel = 2
+autoReturnBtn.BorderColor3 = Color3.fromRGB(255, 100, 0)
+autoReturnBtn.Parent = panel
+
+-- Speed Label
+local speedTextLabel = Instance.new("TextLabel")
+speedTextLabel.Size = UDim2.new(1, -20, 0, 30)
+speedTextLabel.Position = UDim2.new(0, 10, 0, 170)
+speedTextLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+speedTextLabel.Text = "Speed: " .. flySpeed .. " / " .. maxFlySpeed
+speedTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedTextLabel.TextSize = 12
+speedTextLabel.BorderSizePixel = 0
+speedTextLabel.Parent = panel
+
+-- Speed Slider
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, -20, 0, 20)
+sliderBg.Position = UDim2.new(0, 10, 0, 210)
+sliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+sliderBg.BorderSizePixel = 1
+sliderBg.BorderColor3 = Color3.fromRGB(100, 100, 100)
+sliderBg.Parent = panel
+
+local slider = Instance.new("TextButton")
+slider.Size = UDim2.new(0, 20, 1, 0)
+slider.Position = UDim2.new(0, 0, 0, 0)
+slider.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+slider.Text = ""
+slider.BorderSizePixel = 1
+slider.BorderColor3 = Color3.fromRGB(255, 255, 255)
+slider.Parent = sliderBg
+
+-- Log
+local logLabel = Instance.new("TextLabel")
+logLabel.Size = UDim2.new(1, -20, 0, 120)
+logLabel.Position = UDim2.new(0, 10, 0, 250)
+logLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+logLabel.Text = "Log:\nScript iniciado..."
+logLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+logLabel.TextSize = 10
+logLabel.TextWrapped = true
+logLabel.TextXAlignment = Enum.TextXAlignment.Left
+logLabel.TextYAlignment = Enum.TextYAlignment.Top
+logLabel.BorderSizePixel = 1
+logLabel.BorderColor3 = Color3.fromRGB(0, 255, 150)
+logLabel.Parent = panel
+
+local function addLog(text)
+	logLabel.Text = text .. "\n" .. logLabel.Text
 end
 
--- ============ FUNÇÕES ============
-
-local function findSpawnLocation()
-	for _, obj in pairs(workspace:GetChildren()) do
-		if obj.Name:lower():find("spawn") then
-			if obj:IsA("BasePart") then
-				return obj.CFrame + Vector3.new(0, 5, 0)
-			end
+-- Find Spawn
+local function getSpawn()
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj.Name:lower():find("spawn") and obj:IsA("BasePart") then
+			return obj.CFrame + Vector3.new(0, 3, 0)
 		end
 	end
 	return humanoidRootPart.CFrame
 end
 
-local function smoothTeleport(targetCFrame, speed)
-	isReturning = true
-	addStatus("🚀 Voando para spawn com velocidade: " .. speed)
-	
+-- Teleport com velocidade
+local function teleportToSpawn()
+	local spawn = getSpawn()
 	local startPos = humanoidRootPart.Position
-	local targetPos = targetCFrame.Position
-	local distance = (targetPos - startPos).Magnitude
-	local duration = distance / speed
+	local endPos = spawn.Position
+	local distance = (endPos - startPos).Magnitude
+	local time = distance / flySpeed
 	
-	local tweenInfo = TweenInfo.new(
-		duration,
-		Enum.EasingStyle.Linear,
-		Enum.EasingDirection.InOut
-	)
+	addLog("Voando para spawn...")
 	
-	local tween = TweenService:Create(humanoidRootPart, tweenInfo, {
-		CFrame = targetCFrame
-	})
+	local steps = 0
+	local maxSteps = 100
 	
-	tween:Play()
-	tween.Completed:Connect(function()
-		isReturning = false
-		humanoid:TakeDamage(0)
-		addStatus("✓ Chegou ao spawn!")
-	end)
+	while (humanoidRootPart.Position - endPos).Magnitude > 5 and steps < maxSteps do
+		local direction = (endPos - humanoidRootPart.Position).Unit
+		humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * (flySpeed / 60)
+		steps = steps + 1
+		task.wait(1/60)
+	end
+	
+	-- Pousa suavemente
+	humanoidRootPart.CFrame = spawn
+	addLog("Chegou ao spawn!")
 end
 
-local function handleBrainrotSteal()
-	if not autoReturnEnabled or isReturning then return end
-	
-	addStatus("🎉 Brainrot roubado detectado!")
-	task.wait(0.5)
-	
-	local spawnPos = findSpawnLocation()
-	smoothTeleport(spawnPos, flySpeed)
+-- Detectar brainrot roubado
+local function monitorBrainrot()
+	while autoReturnEnabled do
+		local backpack = character:FindFirstChild("Backpack")
+		if backpack then
+			for _, item in pairs(backpack:GetChildren()) do
+				if item.Name:lower():find("brain") or item.Name:lower():find("brainrot") then
+					addLog("Brainrot detectado!")
+					teleportToSpawn()
+					task.wait(2)
+				end
+			end
+		end
+		task.wait(0.5)
+	end
 end
 
--- ============ EVENTOS ============
-
--- Botão abrir/fechar painel
-floatingButton.MouseButton1Click:Connect(function()
-	panelOpen = not panelOpen
-	mainPanel.Visible = panelOpen
-	if panelOpen then
-		addStatus("📖 Painel aberto!")
+-- Auto Return Button Click
+autoReturnBtn.MouseButton1Click:Connect(function()
+	autoReturnEnabled = not autoReturnEnabled
+	
+	if autoReturnEnabled then
+		autoReturnBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+		autoReturnBtn.Text = "AUTO RETURN: ON ✓"
+		addLog("Auto Return ATIVADO")
+		spawnLocation = getSpawn()
+		task.spawn(monitorBrainrot)
+	else
+		autoReturnBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+		autoReturnBtn.Text = "AUTO RETURN: OFF"
+		addLog("Auto Return DESATIVADO")
 	end
 end)
 
--- Mover botão flutuante
+-- Speed Slider
 local dragging = false
-local dragStart
-local startPos
-
-floatingButton.InputBegan:Connect(function(input, gameProcessed)
+UserInputService.InputBegan:Connect(function(input, gp)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = floatingButton.Position
+		if mouse.Target == slider then
+			dragging = true
+		end
 	end
 end)
 
-UserInputService.InputChanged:Connect(function(input, gameProcessed)
+UserInputService.InputChanged:Connect(function(input, gp)
 	if dragging and input.UserInputType == Enum.UserInputType.Mouse then
-		local delta = input.Position - dragStart
-		floatingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		local mouse = Players:FindFirstChild("Mouse") or player:GetMouse()
+		local mouseX = mouse.X
+		local sliderX = sliderBg.AbsolutePosition.X
+		local sliderWidth = sliderBg.AbsoluteSize.X
+		
+		local percentage = math.clamp((mouseX - sliderX) / sliderWidth, 0, 1)
+		flySpeed = math.floor(percentage * maxFlySpeed)
+		
+		slider.Position = UDim2.new(percentage - 0.07, 0, 0, 0)
+		speedTextLabel.Text = "Speed: " .. flySpeed .. " / " .. maxFlySpeed
 	end
 end)
 
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
+UserInputService.InputEnded:Connect(function(input, gp)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		dragging = false
 	end
 end)
 
--- Toggle Auto Return
-autoReturnToggle.MouseButton1Click:Connect(function()
-	autoReturnEnabled = not autoReturnEnabled
-	
-	if autoReturnEnabled then
-		autoReturnToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-		autoReturnToggle.Text = "ON ✓"
-		spawnCFrame = findSpawnLocation()
-		addStatus("✓ AUTO RETURN ATIVADO!")
-	else
-		autoReturnToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-		autoReturnToggle.Text = "OFF ✗"
-		addStatus("✗ AUTO RETURN DESATIVADO")
-	end
-end)
-
--- Slider de velocidade
-local draggingSlider = false
-
-sliderButton.InputBegan:Connect(function(input, gameProcessed)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingSlider = true
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input, gameProcessed)
-	if draggingSlider and input.UserInputType == Enum.UserInputType.Mouse then
-		local mousePos = input.Position.X
-		local sliderStart = speedSliderBg.AbsolutePosition.X
-		local sliderWidth = speedSliderBg.AbsoluteSize.X
-		local percentage = math.clamp((mousePos - sliderStart) / sliderWidth, 0, 1)
-		
-		flySpeed = math.floor(percentage * maxFlySpeed)
-		sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-		sliderButton.Position = UDim2.new(percentage, -12, 0, -4)
-		speedLabel.Text = "VELOCIDADE: " .. flySpeed .. " / " .. maxFlySpeed
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingSlider = false
-	end
-end)
-
--- Detectar quando pegou brainrot
-local lastCheckTime = 0
-RunService.Heartbeat:Connect(function()
-	if not autoReturnEnabled then return end
-	
-	local currentTime = tick()
-	if currentTime - lastCheckTime < 0.5 then return end
-	lastCheckTime = currentTime
-	
-	local backpack = character:FindFirstChild("Backpack")
-	if backpack then
-		for _, item in pairs(backpack:GetChildren()) do
-			if item.Name:lower():find("brainrot") or item.Name:lower():find("brain") then
-				handleBrainrotSteal()
-				break
-			end
-		end
-	end
-end)
-
--- Respawn do personagem
+-- Respawn
 player.CharacterAdded:Connect(function(newChar)
 	character = newChar
 	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 	humanoid = character:WaitForChild("Humanoid")
-	spawnCFrame = humanoidRootPart.CFrame
-	isReturning = false
-	addStatus("↻ Personagem respawnou!")
+	addLog("Respawned")
 end)
 
-addStatus("✓ Script Carregado!")
+addLog("Script pronto!")
 
 -- Loop infinito
 while true do
-	task.wait(0.1)
+	task.wait(1)
 end
