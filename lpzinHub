@@ -1,0 +1,324 @@
+-- Delta Executor - Brainrot Auto Return + Auto Fly Script
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Variáveis de controle
+local panelOpen = false
+local autoReturnEnabled = false
+local flySpeed = 100
+local isFlying = false
+local brainrotItem = nil
+local spawnLocation = humanoidRootPart.CFrame
+local maxFlySpeed = 1156
+
+-- Criar ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DeltaExecutorGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Botão flutuante (círculo com fogo)
+local floatingButton = Instance.new("TextButton")
+floatingButton.Name = "FloatingButton"
+floatingButton.Size = UDim2.new(0, 80, 0, 80)
+floatingButton.Position = UDim2.new(0, 20, 0, 20)
+floatingButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+floatingButton.BackgroundCornerRadius = UDim.new(0, 40)
+floatingButton.Text = "🔥"
+floatingButton.TextSize = 40
+floatingButton.TextColor3 = Color3.fromRGB(255, 100, 0)
+floatingButton.BorderSizePixel = 0
+floatingButton.Parent = screenGui
+
+-- Painel principal
+local mainPanel = Instance.new("Frame")
+mainPanel.Name = "MainPanel"
+mainPanel.Size = UDim2.new(0, 300, 0, 450)
+mainPanel.Position = UDim2.new(0, 100, 0, 100)
+mainPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainPanel.BorderSizePixel = 2
+mainPanel.BorderColor3 = Color3.fromRGB(255, 100, 0)
+mainPanel.Visible = false
+mainPanel.Parent = screenGui
+
+-- Título do painel
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+title.Text = "Delta Executor"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.BorderSizePixel = 0
+title.Parent = mainPanel
+
+-- Label Auto Return
+local autoReturnLabel = Instance.new("TextLabel")
+autoReturnLabel.Name = "AutoReturnLabel"
+autoReturnLabel.Size = UDim2.new(0, 180, 0, 30)
+autoReturnLabel.Position = UDim2.new(0, 10, 0, 60)
+autoReturnLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+autoReturnLabel.Text = "Auto Return:"
+autoReturnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoReturnLabel.TextSize = 14
+autoReturnLabel.BorderSizePixel = 0
+autoReturnLabel.Parent = mainPanel
+
+-- Toggle Auto Return
+local autoReturnToggle = Instance.new("TextButton")
+autoReturnToggle.Name = "AutoReturnToggle"
+autoReturnToggle.Size = UDim2.new(0, 60, 0, 30)
+autoReturnToggle.Position = UDim2.new(0, 230, 0, 60)
+autoReturnToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+autoReturnToggle.Text = "OFF"
+autoReturnToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoReturnToggle.TextSize = 12
+autoReturnToggle.BorderSizePixel = 0
+autoReturnToggle.Parent = mainPanel
+
+-- Label Velocidade
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(1, -20, 0, 30)
+speedLabel.Position = UDim2.new(0, 10, 0, 110)
+speedLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+speedLabel.Text = "Velocidade: " .. flySpeed .. " / " .. maxFlySpeed
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.TextSize = 14
+speedLabel.BorderSizePixel = 0
+speedLabel.Parent = mainPanel
+
+-- Slider Velocidade
+local speedSlider = Instance.new("Frame")
+speedSlider.Name = "SpeedSlider"
+speedSlider.Size = UDim2.new(0, 280, 0, 20)
+speedSlider.Position = UDim2.new(0, 10, 0, 155)
+speedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedSlider.BorderSizePixel = 0
+speedSlider.Parent = mainPanel
+
+local sliderButton = Instance.new("TextButton")
+sliderButton.Name = "SliderButton"
+sliderButton.Size = UDim2.new(0, 20, 0, 20)
+sliderButton.Position = UDim2.new(0, 0, 0, 0)
+sliderButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+sliderButton.Text = ""
+sliderButton.BorderSizePixel = 0
+sliderButton.Parent = speedSlider
+
+-- Log
+local logLabel = Instance.new("TextLabel")
+logLabel.Name = "LogLabel"
+logLabel.Size = UDim2.new(1, -20, 0, 200)
+logLabel.Position = UDim2.new(0, 10, 0, 200)
+logLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+logLabel.Text = "Status: Aguardando...\n"
+logLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+logLabel.TextSize = 11
+logLabel.TextWrapped = true
+logLabel.TextXAlignment = Enum.TextXAlignment.Left
+logLabel.TextYAlignment = Enum.TextYAlignment.Top
+logLabel.BorderSizePixel = 1
+logLabel.BorderColor3 = Color3.fromRGB(0, 255, 0)
+logLabel.Parent = mainPanel
+
+-- Função para adicionar log
+local function addLog(message)
+	logLabel.Text = message .. "\n" .. logLabel.Text
+	if string.len(logLabel.Text) > 800 then
+		logLabel.Text = string.sub(logLabel.Text, 1, 800)
+	end
+end
+
+-- Função para encontrar o spawn
+local function findSpawn()
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part.Name:lower():find("spawn") or part.Name:lower():find("começo") then
+			if part:IsA("BasePart") then
+				return part.CFrame
+			end
+		end
+	end
+	return spawnLocation
+end
+
+-- Função de voo rápido
+local function flyToLocation(targetCFrame, speed)
+	isFlying = true
+	local bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+	bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	bodyVelocity.Parent = humanoidRootPart
+	
+	addLog("Iniciando voo rápido com velocidade: " .. speed)
+	
+	while (humanoidRootPart.Position - targetCFrame.Position).Magnitude > 5 and isFlying do
+		local direction = (targetCFrame.Position - humanoidRootPart.Position).Unit
+		bodyVelocity.Velocity = direction * speed
+		task.wait(0.016)
+	end
+	
+	bodyVelocity:Destroy()
+	isFlying = false
+	addLog("Chegou ao destino!")
+end
+
+-- Função para pegar item na mão
+local function grabItem(item)
+	if not item then return end
+	
+	addLog("Pegando item na mão...")
+	task.wait(0.1)
+	
+	if item:IsA("BasePart") then
+		item.CanCollide = false
+		item.CFrame = humanoidRootPart.CFrame + humanoidRootPart.CFrame.LookVector * 2
+		
+		-- Tenta soldar o item na mão
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = humanoidRootPart
+		weld.Part1 = item
+		weld.Parent = item
+		
+		addLog("Item na mão!")
+	end
+end
+
+-- Monitorar quando o brainrot é roubado
+local lastBrainrotTime = 0
+local function monitorBrainrot()
+	while autoReturnEnabled do
+		local function searchBrainrot()
+			for _, item in pairs(workspace:GetDescendants()) do
+				if item:IsA("BasePart") then
+					if item.Name:lower():find("brainrot") or item.Name:lower():find("brain") then
+						local inventory = character:FindFirstChild("Backpack") or character
+						if inventory:FindFirstChild(item.Name) then
+							local currentTime = tick()
+							if currentTime - lastBrainrotTime > 0.5 then
+								lastBrainrotTime = currentTime
+								return item
+							end
+						end
+					end
+				end
+			end
+		end
+		
+		local foundItem = searchBrainrot()
+		if foundItem then
+			addLog("🎉 Brainrot roubado detectado!")
+			grabItem(foundItem)
+			task.wait(0.2)
+			
+			local spawnPos = findSpawn()
+			addLog("Voando para spawn...")
+			flyToLocation(spawnPos, flySpeed)
+			task.wait(1)
+		end
+		
+		task.wait(0.1)
+	end
+end
+
+-- Eventos do botão flutuante
+floatingButton.MouseButton1Click:Connect(function()
+	panelOpen = not panelOpen
+	mainPanel.Visible = panelOpen
+end)
+
+-- Fazer o botão ser movível
+local dragging = false
+local dragStart
+local startPos
+
+floatingButton.InputBegan:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = floatingButton.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	if dragging and input.UserInputType == Enum.UserInputType.Mouse then
+		local delta = input.Position - dragStart
+		floatingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+-- Toggle Auto Return
+autoReturnToggle.MouseButton1Click:Connect(function()
+	autoReturnEnabled = not autoReturnEnabled
+	
+	if autoReturnEnabled then
+		autoReturnToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+		autoReturnToggle.Text = "ON"
+		addLog("Auto Return: ATIVADO ✓")
+		spawnLocation = findSpawn()
+		task.spawn(monitorBrainrot)
+	else
+		autoReturnToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+		autoReturnToggle.Text = "OFF"
+		addLog("Auto Return: DESATIVADO")
+		isFlying = false
+	end
+end)
+
+-- Slider de velocidade
+local draggingSlider = false
+sliderButton.InputBegan:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingSlider = true
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	if draggingSlider and input.UserInputType == Enum.UserInputType.Mouse then
+		local mousePos = input.Position.X
+		local sliderStart = speedSlider.AbsolutePosition.X
+		local sliderEnd = sliderStart + speedSlider.AbsoluteSize.X
+		local percentage = math.clamp((mousePos - sliderStart) / (sliderEnd - sliderStart), 0, 1)
+		
+		flySpeed = math.floor(percentage * maxFlySpeed)
+		sliderButton.Position = UDim2.new(percentage - 0.07, 0, 0, 0)
+		speedLabel.Text = "Velocidade: " .. flySpeed .. " / " .. maxFlySpeed
+		addLog("Velocidade ajustada: " .. flySpeed)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingSlider = false
+	end
+end)
+
+-- Detectar quando o jogador respawna
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+	humanoid = character:WaitForChild("Humanoid")
+	spawnLocation = humanoidRootPart.CFrame
+	addLog("Personagem respawnou!")
+end)
+
+addLog("Script carregado! 🔥\nClique no botão para abrir\nAltive Auto Return e roubadum brainrot!")
+
+-- Loop infinito
+while true do
+	task.wait(0.1)
+end
